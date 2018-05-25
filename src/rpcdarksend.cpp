@@ -737,10 +737,12 @@ Value masternode(const Array& params, bool fHelp)
         CApolloncoinAddress address2(address1);
 
         Object mnObj;
+        CMasternode *pmn = mnodeman.Find(activeMasternode.vin);
+
         mnObj.push_back(Pair("vin", activeMasternode.vin.ToString().c_str()));
         mnObj.push_back(Pair("service", activeMasternode.service.ToString().c_str()));
         mnObj.push_back(Pair("status", activeMasternode.status));
-        mnObj.push_back(Pair("pubKeyMasternode", address2.ToString().c_str()));
+        if (pmn) mnObj.push_back(Pair("pubkey", CStipendAddress(pmn->pubkey.GetID()).ToString()));
         mnObj.push_back(Pair("notCapableReason", activeMasternode.notCapableReason.c_str()));
         return mnObj;
     }

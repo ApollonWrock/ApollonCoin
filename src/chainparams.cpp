@@ -8,9 +8,7 @@
 #include "chainparams.h"
 #include "main.h"
 #include "util.h"
-
-#include <iostream>
-
+#include "base58.h"
 #include <boost/assign/list_of.hpp>
 
 using namespace boost::assign;
@@ -51,6 +49,28 @@ static void convertSeeds(std::vector<CAddress> &vSeedsOut, const unsigned int *d
 		addr.nTime = GetTime() - GetRand(nOneWeek) - nOneWeek;
 		vSeedsOut.push_back(addr);
 	}
+}
+
+// Hardcoded seeds.
+static void getHardcodedSeeds(std::vector<CAddress> &vSeedsOut)
+{
+    std::vector<std::string> ips;
+    ips.push_back("34.225.25.154");
+    ips.push_back("52.45.189.6");
+    ips.push_back("34.232.249.188");
+    ips.push_back("34.231.228.73");
+    ips.push_back("34.239.99.171");
+    ips.push_back("18.218.0.160");
+    ips.push_back("13.59.189.252");
+    ips.push_back("52.15.218.190");
+
+    const int64_t oneWeek = 7 * 24 * 60 * 60;
+    for (size_t i = 0; i < ips.size(); ++i)
+    {
+        CAddress addr(CService(ips[i], 46978));
+        addr.nTime = GetTime() - GetRand(oneWeek) - oneWeek;
+        vSeedsOut.push_back(addr);
+    }
 }
 
 class CMainParams : public CChainParams {
@@ -112,6 +132,8 @@ public:
         vSeeds.push_back(CDNSSeedData("2", "52.41.181.185"));
 		convertSeeds(vFixedSeeds, pnSeed, ARRAYLEN(pnSeed), nDefaultPort);
 
+        getHardcodedSeeds(vFixedSeeds);
+
 		nPoolMaxTransactions = 3;
 		//strSporkKey = "046f78dcf911fbd61910136f7f0f8d90578f68d0b3ac973b5040fb7afb501b5939f39b108b0569dca71488f5bbf498d92e4d1194f6f941307ffd95f75e76869f0e";
 		//strMasternodePaymentsPubKey = "046f78dcf911fbd61910136f7f0f8d90578f68d0b3ac973b5040fb7afb501b5939f39b108b0569dca71488f5bbf498d92e4d1194f6f941307ffd95f75e76869f0e";
@@ -163,6 +185,12 @@ public:
 		vFixedSeeds.clear();
 		vSeeds.clear();
 
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,85); // b
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,23);
+        base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,25);
+        base58Prefixes[STEALTH_ADDRESS] = std::vector<unsigned char>(1,43);
+        base58Prefixes[EXT_PUBLIC_KEY] = list_of(0x98)(0x74)(0x44)(0xE1).convert_to_container<std::vector<unsigned char> >();
+        base58Prefixes[EXT_SECRET_KEY] = list_of(0x98)(0x72)(0x42)(0xE2).convert_to_container<std::vector<unsigned char> >();
 		base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 127);
 		base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 196);
 		base58Prefixes[SECRET_KEY] = std::vector<unsigned char>(1, 239);

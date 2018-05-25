@@ -1406,18 +1406,10 @@ const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfSta
     return pindex;
 }
 
+const int targetReadjustmentForkHeight = 192000;
+
 unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
-	unsigned int nTargetTemp = TARGET_SPACING;
-	if (pindexLast->nTime > FORK_TIME)
-		nTargetTemp = TARGET_SPACING2;
-
-	if(pindexLast->GetBlockTime() > STAKE_TIMESPAN_SWITCH_TIME)
-	nTargetTimespan = 2 * 60; // 2 minutes
-
-	if(pindexLast->GetBlockTime() > STAKE_TIMESPAN_SWITCH_TIME1)
-	nTargetTimespan = 10 * 60; // 10 minutes
-
     CBigNum bnTargetLimit = fProofOfStake ? GetProofOfStakeLimit(pindexLast->nHeight) : Params().ProofOfWorkLimit();
 
     if (pindexLast == NULL)
@@ -1433,17 +1425,34 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
 
     int64_t nActualSpacing = pindexPrev->GetBlockTime() - pindexPrevPrev->GetBlockTime();
 
+    if(pindexBest->nHeight < targetReadjustmentForkHeight) {
     if (nActualSpacing < 0){
-        nActualSpacing = nTargetTemp;
+            nActualSpacing = TARGET_SPACING;
+        }
+    } else {
+        if (nActualSpacing < 0) {
+            nActualSpacing = 1;
+        }
+
+        if (nActualSpacing < TARGET_SPACING / 2)
+            nActualSpacing = TARGET_SPACING / 2;
+        if (nActualSpacing > TARGET_SPACING * 2)
+            nActualSpacing = TARGET_SPACING * 2;
     }
 
     // ppcoin: target change every block
     // ppcoin: retarget with exponential moving toward target spacing
     CBigNum bnNew;
     bnNew.SetCompact(pindexPrev->nBits);
-    int64_t nInterval = nTargetTimespan / nTargetTemp;
-    bnNew *= ((nInterval - 1) * nTargetTemp + nActualSpacing + nActualSpacing);
-    bnNew /= ((nInterval + 1) * nTargetTemp);
+    if(!NO_FORK && pindexBest->nHeight >= HARD_FORK_BLOCK){
+        int64_t nInterval = nTargetTimespan / TARGET_SPACING_FORK;
+        bnNew *= ((nInterval - 1) * TARGET_SPACING_FORK + nActualSpacing + nActualSpacing);
+        bnNew /= ((nInterval + 1) * TARGET_SPACING_FORK);
+    } else {
+        int64_t nInterval = nTargetTimespan / TARGET_SPACING;
+        bnNew *= ((nInterval - 1) * TARGET_SPACING + nActualSpacing + nActualSpacing);
+        bnNew /= ((nInterval + 1) * TARGET_SPACING);
+    }
 
     if (bnNew <= 0 || bnNew > bnTargetLimit)
         bnNew = bnTargetLimit;
@@ -2527,80 +2536,26 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
                     bool foundPaymentAndPayee = false;
 
                     CScript payee;
-                    string targetNode;
                     CTxIn vin;
-                    
-					CScript payeerewardaddress = CScript();
-					int payeerewardpercent = 0;
-					bool hasPayment = true;
-			
-					if(!masternodePayments.GetBlockPayee(pindexBest->nHeight+1, payee, vin)){
-						CMasternode* winningNode = mnodeman.GetCurrentMasterNode(1);
-						if(winningNode){
-							payee = GetScriptForDestination(winningNode->pubkey.GetID());
-							payeerewardaddress = winningNode->rewardAddress;
-							payeerewardpercent = winningNode->rewardPercentage;
-					   
-						// If reward percent is 0 then send all to masternode address
-						if(hasPayment && payeerewardpercent == 0){
-							CTxDestination address1;
-							ExtractDestination(payee, address1);
-							CApolloncoinAddress address2(address1);
-							targetNode = address2.ToString().c_str();	
-						}
-
-						// If reward percent is 100 then send all to reward address
-						if(hasPayment && payeerewardpercent == 100){
-							CTxDestination address1;
-							ExtractDestination(payeerewardaddress, address1);
-							CApolloncoinAddress address2(address1);
-							targetNode = address2.ToString().c_str();
-							
-						}
-
-						// If reward percent more than 0 and lower than 100 then split reward
-						if(hasPayment && payeerewardpercent > 0 && payeerewardpercent < 100){
-							CTxDestination address1;
-							ExtractDestination(payee, address1);
-							CApolloncoinAddress address2(address1);
-							
-							CTxDestination address3;
-							ExtractDestination(payeerewardaddress, address3);
-							CApolloncoinAddress address4(address3);
-							targetNode = address2.ToString().c_str();
-							
-						}
-						LogPrintf("Detected Masternode payment to %s\n", targetNode);	
-						} else {
-							LogPrintf("Cant calculate Winner, so passing.");                        
-                            foundPaymentAmount = true;
-                            foundPayee = true;
-                            foundPaymentAndPayee = true;
-                        }
+                    if(!masternodePayments.GetBlockPayee(pindexBest->nHeight+1, payee, vin)) {
+                        foundPayee = true;
+                        foundPaymentAmount = true;
+                        foundPaymentAndPayee = true;
+                        if(fDebug) { LogPrintf("CheckBlock() : Using non-specific masternode payments %d\n", pindexBest->nHeight+1); }
                     }
-
 
                     for (unsigned int i = 0; i < vtx[1].vout.size(); i++) {
-						CTxDestination address1;
-						ExtractDestination(vtx[1].vout[i].scriptPubKey, address1);
-						CApolloncoinAddress address2(address1);                        
                         if(vtx[1].vout[i].nValue == masternodePaymentAmount )
                             foundPaymentAmount = true;
-						if(address2.ToString().c_str() == targetNode)                            
+                        if(vtx[1].vout[i].scriptPubKey == payee )
                             foundPayee = true;
-						if(vtx[1].vout[i].nValue == masternodePaymentAmount && address2.ToString().c_str() == targetNode)
+                        if(vtx[1].vout[i].nValue == masternodePaymentAmount && vtx[1].vout[i].scriptPubKey == payee)
                             foundPaymentAndPayee = true;
                     }
-
 
                     CTxDestination address1;
                     ExtractDestination(payee, address1);
-                    CApolloncoinAddress address2(address1);
-					if (pindexBest->nHeight+1 < 250000) { // TODO: remove magic number; use in one place
-						foundPaymentAmount = true;
-						foundPayee = true;
-						foundPaymentAndPayee = true;
-					}
+                    CStipendAddress address2(address1);
 
                     if(!foundPaymentAndPayee) {
                         if(fDebug) { LogPrintf("CheckBlock() : Couldn't find masternode payment(%d|%d) or payee(%d|%s) nHeight %d. \n", foundPaymentAmount, masternodePaymentAmount, foundPayee, address2.ToString().c_str(), pindexBest->nHeight+1); }
@@ -2703,7 +2658,7 @@ bool CBlock::AcceptBlock()
         return DoS(50, error("AcceptBlock() : coinstake timestamp violation nTimeBlock=%d nTimeTx=%u", GetBlockTime(), vtx[1].nTime));
 
     // Check proof-of-work or proof-of-stake
-    if (nBits != GetNextTargetRequired(pindexPrev, IsProofOfStake()) && hash != uint256("0x474619e0a58ec88c8e2516f8232064881750e87acac3a416d65b99bd61246968") && hash != uint256("0x4f3dd45d3de3737d60da46cff2d36df0002b97c505cdac6756d2d88561840b63") && hash != uint256("0x274996cec47b3f3e6cd48c8f0b39c32310dd7ddc8328ae37762be956b9031024"))
+    if (nBits != GetNextTargetRequired(pindexPrev, IsProofOfStake()))
         return DoS(100, error("AcceptBlock() : incorrect %s", IsProofOfWork() ? "proof-of-work" : "proof-of-stake"));
 
     // Check timestamp against prev
@@ -2827,6 +2782,9 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
     // Duplicate stake allowed only when there is orphan child block
     if (!fReindex && !fImporting && pblock->IsProofOfStake() && setStakeSeen.count(pblock->GetProofOfStake()) && !mapOrphanBlocksByPrev.count(hash))
         return error("ProcessBlock() : duplicate proof-of-stake (%s, %d) for block %s", pblock->GetProofOfStake().first.ToString(), pblock->GetProofOfStake().second, hash.ToString());
+
+
+
 
     if (pblock->hashPrevBlock != hashBestChain)
     {
@@ -3038,6 +2996,7 @@ bool CBlock::CheckBlockSignature() const
         valtype& vchPubKey = vSolutions[0];
         return CPubKey(vchPubKey).Verify(GetHash(), vchBlockSig);
     }
+
 
     return false;
 }
