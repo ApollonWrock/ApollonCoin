@@ -610,7 +610,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         int rewardPercentage = 0;
         
         // 70047 and greater
-        vRecv >> vin >> addr >> vchSig >> sigTime >> pubkey >> pubkey2 >> count >> current >> lastUpdated >> protocolVersion >> donationAddress >> donationPercentage;
+        vRecv >> vin >> addr >> vchSig >> sigTime >> pubkey >> pubkey2 >> count >> current >> lastUpdated >> protocolVersion >> rewardAddress >> rewardPercentage;
         
         // make sure signature isn't in the future (past is OK)
         if (sigTime > GetAdjustedTime() + 60 * 60) {
@@ -624,10 +624,10 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         std::string vchPubKey(pubkey.begin(), pubkey.end());
         std::string vchPubKey2(pubkey2.begin(), pubkey2.end());
 
-        strMessage = addr.ToString() + boost::lexical_cast<std::string>(sigTime) + vchPubKey + vchPubKey2 + boost::lexical_cast<std::string>(protocolVersion)  + donationAddress.ToString() + boost::lexical_cast<std::string>(donationPercentage);
+        strMessage = addr.ToString() + boost::lexical_cast<std::string>(sigTime) + vchPubKey + vchPubKey2 + boost::lexical_cast<std::string>(protocolVersion)  + rewardAddress.ToString() + boost::lexical_cast<std::string>(rewardPercentage);
 
-        if(donationPercentage < 0 || donationPercentage > 100){
-            LogPrintf("dsee - donation percentage out of range %d\n", donationPercentage);
+        if(rewardPercentage < 0 || rewardPercentage > 100){
+            LogPrintf("dsee - reward percentage out of range %d\n", rewardPercentage);
             return;
         }
         if(protocolVersion < MIN_POOL_PEER_PROTO_VERSION) {
@@ -689,12 +689,12 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                     pmn->sig = vchSig;
                     pmn->protocolVersion = protocolVersion;
                     pmn->addr = addr;
-                    pmn->donationAddress = donationAddress;
-                    pmn->donationPercentage = donationPercentage;
+                    pmn->rewardAddress = rewardAddress;
+                    pmn->rewardPercentage = rewardPercentage;
                     pmn->Check();
                     pmn->isOldNode = true;
                     if(pmn->IsEnabled())
-                        mnodeman.RelayMasternodeEntry(vin, addr, vchSig, sigTime, pubkey, pubkey2, count, current, lastUpdated, protocolVersion, donationAddress, donationPercentage);
+                        mnodeman.RelayMasternodeEntry(vin, addr, vchSig, sigTime, pubkey, pubkey2, count, current, lastUpdated, protocolVersion, rewardAddress, rewardPercentage);
                 }
             }
 
