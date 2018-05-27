@@ -234,6 +234,7 @@ bool CheckStakeKernelHash(CBlockIndex* pindexPrev, unsigned int nBits, unsigned 
     uint64_t nStakeModifier = pindexPrev->nStakeModifier;
     int nStakeModifierHeight = pindexPrev->nHeight;
     int64_t nStakeModifierTime = pindexPrev->nTime;
+    uint256 bnStakeModifierV2 = pindexPrev->bnStakeModifierV2;
 
     // Calculate hash
     CDataStream ss(SER_GETHASH, 0);

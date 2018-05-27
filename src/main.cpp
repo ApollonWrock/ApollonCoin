@@ -49,7 +49,7 @@ CBigNum bnProofOfStakeLimit(~uint256(0) >> 20);
 
 unsigned int nStakeMinAge = 11 * 60 * 60; // 11 hours
 unsigned int nModifierInterval = 2 * 60; // time to elapse before new modifier is computed
-
+unsigned int nStakeMaxAge = 48 * 24 * 60 * 60; // 48 Days.
 int nCoinbaseMaturity = 5;
 CBlockIndex* pindexGenesisBlock = NULL;
 int nBestHeight = -1;
@@ -1411,7 +1411,7 @@ const int targetReadjustmentForkHeight = 192000;
 unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
     CBigNum bnTargetLimit = fProofOfStake ? GetProofOfStakeLimit(pindexLast->nHeight) : Params().ProofOfWorkLimit();
-
+unsigned int nTargetTemp = TARGET_SPACING2;
     if (pindexLast == NULL)
         return bnTargetLimit.GetCompact(); // genesis block
 
@@ -1427,32 +1427,37 @@ unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfS
 
     if(pindexBest->nHeight < targetReadjustmentForkHeight) {
     if (nActualSpacing < 0){
-            nActualSpacing = TARGET_SPACING;
+            nActualSpacing = nTargetTemp;
         }
     } else {
         if (nActualSpacing < 0) {
             nActualSpacing = 1;
         }
 
-        if (nActualSpacing < TARGET_SPACING / 2)
-            nActualSpacing = TARGET_SPACING / 2;
-        if (nActualSpacing > TARGET_SPACING * 2)
-            nActualSpacing = TARGET_SPACING * 2;
+        if (nActualSpacing < nTargetTemp / 2)
+            nActualSpacing = nTargetTemp / 2;
+        if (nActualSpacing > nTargetTemp * 2)
+            nActualSpacing = nTargetTemp * 2;
     }
 
     // ppcoin: target change every block
     // ppcoin: retarget with exponential moving toward target spacing
-    CBigNum bnNew;
-    bnNew.SetCompact(pindexPrev->nBits);
-    if(!NO_FORK && pindexBest->nHeight >= HARD_FORK_BLOCK){
-        int64_t nInterval = nTargetTimespan / TARGET_SPACING_FORK;
-        bnNew *= ((nInterval - 1) * TARGET_SPACING_FORK + nActualSpacing + nActualSpacing);
-        bnNew /= ((nInterval + 1) * TARGET_SPACING_FORK);
-    } else {
-        int64_t nInterval = nTargetTimespan / TARGET_SPACING;
-        bnNew *= ((nInterval - 1) * TARGET_SPACING + nActualSpacing + nActualSpacing);
-        bnNew /= ((nInterval + 1) * TARGET_SPACING);
-    }
+     CBigNum bnNew;
+     bnNew.SetCompact(pindexPrev->nBits);
+	 
+	     int64_t nInterval = nTargetTimespan / nTargetTemp;
+    bnNew *= ((nInterval - 1) * nTargetTemp + nActualSpacing + nActualSpacing);
+    bnNew /= ((nInterval + 1) * nTargetTemp);
+	
+    // if(!NO_FORK && pindexBest->nHeight >= HARD_FORK_BLOCK){
+        // int64_t nInterval = nTargetTimespan / TARGET_SPACING_FORK;
+        // bnNew *= ((nInterval - 1) * TARGET_SPACING_FORK + nActualSpacing + nActualSpacing);
+        // bnNew /= ((nInterval + 1) * TARGET_SPACING_FORK);
+    // } else {
+        // int64_t nInterval = nTargetTimespan / TARGET_SPACING;
+        // bnNew *= ((nInterval - 1) * TARGET_SPACING + nActualSpacing + nActualSpacing);
+        // bnNew /= ((nInterval + 1) * TARGET_SPACING);
+    // }
 
     if (bnNew <= 0 || bnNew > bnTargetLimit)
         bnNew = bnTargetLimit;
@@ -2555,7 +2560,7 @@ bool CBlock::CheckBlock(bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig) c
 
                     CTxDestination address1;
                     ExtractDestination(payee, address1);
-                    CApollonAddress address2(address1);
+                    CApolloncoinAddress address2(address1);
 
                     if(!foundPaymentAndPayee) {
                         if(fDebug) { LogPrintf("CheckBlock() : Couldn't find masternode payment(%d|%d) or payee(%d|%s) nHeight %d. \n", foundPaymentAmount, masternodePaymentAmount, foundPayee, address2.ToString().c_str(), pindexBest->nHeight+1); }

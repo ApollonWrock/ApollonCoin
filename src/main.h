@@ -28,7 +28,8 @@ static const int64_t TARGET_SPACING2 = 53; // 2 min per Block
 static const int64_t STAKE_TIMESPAN_SWITCH_TIME = 1517720873;
 static const int64_t STAKE_TIMESPAN_SWITCH_TIME1 = 1518720873; //February 15th, 2018
 static const int64_t FORK_TIME = 1518720873;  //February 15th, 2018
-
+static const bool NO_FORK = true;
+static const signed int HARD_FORK_BLOCK = 90000000;
 
 #define INSTANTX_SIGNATURES_REQUIRED           10
 #define INSTANTX_SIGNATURES_TOTAL              15
